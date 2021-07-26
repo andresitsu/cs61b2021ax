@@ -1,8 +1,6 @@
 package game2048;
 
-import java.util.Formatter;
-import java.util.Observable;
-
+import java.util.*;
 
 /** The state of a game of 2048.
  *  @author TODO: YOUR NAME HERE
@@ -106,6 +104,51 @@ public class Model extends Observable {
      *    value, then the leading two tiles in the direction of motion merge,
      *    and the trailing tile does not.
      * */
+
+    public boolean tiltSingleColumnNorth(int col){
+        boolean changed = false;
+        //to establish a mergeLog
+        boolean[] mergedLog = new boolean[board.size()];
+        for (int row = 0; row < board.size(); row += 1) {
+            mergedLog[row] = false;
+        }
+
+        for (int row = board.size() - 2; row >= 0; row -= 1 ) {
+            Tile currentTile = board.tile(col, row);
+            int totalStepsNorth = 0;
+            int stepsToNoNull = 0;
+            int shouldIMerge = 0;
+            int scoreGet = 0;
+
+            if (currentTile == null) { continue; }
+            // computes the steps to no null
+            for (int i = row + 1; i < board.size(); i += 1) {
+                if (board.tile(col, i) == null ) {
+                    stepsToNoNull += 1;
+                } else {
+                    break;
+                }
+            }
+            //whether the very next tile is with the same value and not merged before
+            if ((row + stepsToNoNull + 1) < board.size() && board.tile(col, (row + stepsToNoNull + 1)).value() == currentTile.value()) {
+                if (mergedLog[row + stepsToNoNull] == false) {
+                    shouldIMerge = 1;
+                    mergedLog[row + stepsToNoNull] = true;
+                    scoreGet = 2 * currentTile.value();
+                    this.score += scoreGet;
+                }
+            }
+
+            //total steps computation
+            totalStepsNorth = stepsToNoNull + shouldIMerge;
+            if (totalStepsNorth > 0) {
+                changed = true;
+            }
+            board.move(col, (row + totalStepsNorth), currentTile);
+        }
+        return changed;
+    }
+
     public boolean tilt(Side side) {
         boolean changed;
         changed = false;
@@ -113,6 +156,16 @@ public class Model extends Observable {
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
+        if (side != Side.NORTH) {
+            board.setViewingPerspective(side);
+        }
+        for (int column = 0; column < board.size(); column += 1) {
+            boolean thisColumnChanged = tiltSingleColumnNorth(column);
+            if (thisColumnChanged == true) {
+                changed = true;
+            }
+        }
+        board.setViewingPerspective(Side.NORTH);
 
         checkGameOver();
         if (changed) {
@@ -137,17 +190,30 @@ public class Model extends Observable {
      *  Empty spaces are stored as null.
      * */
     public static boolean emptySpaceExists(Board b) {
-        // TODO: Fill in this function.
+        for(int col = 0; col < b.size(); col += 1) {
+            for (int row = 0; row < b.size(); row += 1) {
+                if (b.tile(col, row) == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
-
     /**
      * Returns true if any tile is equal to the maximum valid value.
      * Maximum valid value is given by MAX_PIECE. Note that
      * given a Tile object t, we get its value with t.value().
      */
     public static boolean maxTileExists(Board b) {
-        // TODO: Fill in this function.
+        for(int col = 0; col < b.size(); col += 1) {
+            for (int row = 0; row < b.size(); row += 1) {
+                if (b.tile(col, row) != null) {
+                    if (b.tile(col, row).value() == MAX_PIECE) {
+                        return true;
+                    }
+                }
+            }
+        }
         return false;
     }
 
@@ -157,9 +223,34 @@ public class Model extends Observable {
      * 1. There is at least one empty space on the board.
      * 2. There are two adjacent tiles with the same value.
      */
+    public static ArrayList<Tile[]> pairsArray(Board b) {
+        ArrayList<Tile[]> tilesArray = new ArrayList<Tile[]>();
+        for (int col = 0; col < b.size(); col += 1) {
+            for (int row = 0; row < b.size(); row += 1) {
+                if (col + 1 < b.size()) {
+                    Tile[] t = {b.tile(col, row), b.tile((col + 1), row)};
+                    tilesArray.add(t);
+                }
+                if (row + 1 < b.size()) {
+                    Tile[] t = {b.tile(col, row), b.tile(col, (row + 1))};
+                    tilesArray.add(t);
+                }
+            }
+        }
+        return tilesArray;
+    }
+
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
-        return false;
+        if (emptySpaceExists(b)) {
+            return true;
+        } else {
+            for (int i = 0; i < pairsArray(b).size(); i ++){
+                if (pairsArray(b).get(i)[0].value() == pairsArray(b).get(i)[1].value()) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
 
